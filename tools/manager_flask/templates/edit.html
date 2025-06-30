@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ '编辑' if record_id else '新增' }} {{ record_type_name }} - H2D Logbook</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <i class="bi bi-printer"></i> H2D Logbook Manager
+                </a>
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i class="bi bi-arrow-left"></i> 返回列表
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="mb-4">
+                        {{ '编辑' if record_id else '新增' }} {{ record_type_name }}
+                        {% if record_id %}
+                            <small class="text-muted">ID: {{ record_id }}</small>
+                        {% endif %}
+                    </h1>
+
+                    <form method="POST" action="{{ url_for('save_record', record_type=record_type, record_id=record_id) if record_id else url_for('save_record', record_type=record_type) }}">
+                        <div class="card">
+                            <div class="card-body">
+                                {% if record_type == 'record' %}
+                                    <!-- 打印记录表单 -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="title" class="form-label">标题 *</label>
+                                                <input type="text" class="form-control" id="title" name="title" 
+                                                       value="{{ record_data.get('title', '') }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="model_name" class="form-label">模型名称</label>
+                                                <input type="text" class="form-control" id="model_name" name="model_name" 
+                                                       value="{{ record_data.get('model_name', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="model_url" class="form-label">模型链接</label>
+                                                <input type="url" class="form-control" id="model_url" name="model_url" 
+                                                       value="{{ record_data.get('model_url', '') }}">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="rating" class="form-label">评分 (1-5)</label>
+                                                <select class="form-select" id="rating" name="rating">
+                                                    <option value="">请选择</option>
+                                                    {% for i in range(1, 6) %}
+                                                        <option value="{{ i }}" {{ 'selected' if record_data.get('rating') == i or record_data.get('rating') == i|string else '' }}>{{ i }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="print_time_hours" class="form-label">打印时长 (小时)</label>
+                                                <input type="number" class="form-control" id="print_time_hours" name="print_time_hours" 
+                                                       value="{{ record_data.get('print_time_hours', '') }}" min="0">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="print_time_minutes" class="form-label">打印时长 (分钟)</label>
+                                                <input type="number" class="form-control" id="print_time_minutes" name="print_time_minutes" 
+                                                       value="{{ record_data.get('print_time_minutes', '') }}" min="0" max="59">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="layer_height" class="form-label">层高 (mm)</label>
+                                                <input type="number" class="form-control" id="layer_height" name="layer_height" 
+                                                       value="{{ record_data.get('layer_height', '') }}" step="0.01" min="0">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="infill_percentage" class="form-label">填充率 (%)</label>
+                                                <input type="number" class="form-control" id="infill_percentage" name="infill_percentage" 
+                                                       value="{{ record_data.get('infill_percentage', '') }}" min="0" max="100">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="materials" class="form-label">材料 (逗号分隔)</label>
+                                                <input type="text" class="form-control" id="materials" name="materials" 
+                                                       value="{{ record_data.get('materials', [])|join(', ') if record_data.get('materials') else '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input" id="supports_used" name="supports_used" 
+                                                       value="true" {{ 'checked' if record_data.get('supports_used') == 'true' or record_data.get('supports_used') == True else '' }}>
+                                                <label class="form-check-label" for="supports_used">使用支撑</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3 form-check">
+                                                <input type="checkbox" class="form-check-input" id="success" name="success" 
+                                                       value="true" {{ 'checked' if record_data.get('success') == 'true' or record_data.get('success') == True else '' }}>
+                                                <label class="form-check-label" for="success">打印成功</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                {% elif record_type == 'plan' %}
+                                    <!-- 打印计划表单 -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="title" class="form-label">计划标题 *</label>
+                                                <input type="text" class="form-control" id="title" name="title" 
+                                                       value="{{ record_data.get('title', '') }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="model_name" class="form-label">模型名称</label>
+                                                <input type="text" class="form-control" id="model_name" name="model_name" 
+                                                       value="{{ record_data.get('model_name', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="model_url" class="form-label">模型链接</label>
+                                        <input type="url" class="form-control" id="model_url" name="model_url" 
+                                               value="{{ record_data.get('model_url', '') }}">
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="priority" class="form-label">优先级</label>
+                                                <select class="form-select" id="priority" name="priority">
+                                                    <option value="">请选择</option>
+                                                    <option value="low" {{ 'selected' if record_data.get('priority') == 'low' else '' }}>低</option>
+                                                    <option value="medium" {{ 'selected' if record_data.get('priority') == 'medium' else '' }}>中</option>
+                                                    <option value="high" {{ 'selected' if record_data.get('priority') == 'high' else '' }}>高</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="estimated_time" class="form-label">预计时长</label>
+                                                <input type="text" class="form-control" id="estimated_time" name="estimated_time" 
+                                                       value="{{ record_data.get('estimated_time', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                {% elif record_type == 'consumable_purchase' %}
+                                    <!-- 耗材采购记录表单 -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="item_name" class="form-label">耗材名称 *</label>
+                                                <input type="text" class="form-control" id="item_name" name="item_name" 
+                                                       value="{{ record_data.get('item_name', '') }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="brand" class="form-label">品牌</label>
+                                                <input type="text" class="form-control" id="brand" name="brand" 
+                                                       value="{{ record_data.get('brand', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="quantity" class="form-label">数量</label>
+                                                <input type="number" class="form-control" id="quantity" name="quantity" 
+                                                       value="{{ record_data.get('quantity', '') }}" min="1">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="unit_price" class="form-label">单价</label>
+                                                <input type="number" class="form-control" id="unit_price" name="unit_price" 
+                                                       value="{{ record_data.get('unit_price', '') }}" step="0.01" min="0">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="purchase_date" class="form-label">购买日期</label>
+                                                <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
+                                                       value="{{ record_data.get('purchase_date', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                {% elif record_type == 'consumable_retirement' %}
+                                    <!-- 耗材退役记录表单 -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="item_name" class="form-label">耗材名称 *</label>
+                                                <input type="text" class="form-control" id="item_name" name="item_name" 
+                                                       value="{{ record_data.get('item_name', '') }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="retirement_date" class="form-label">退役日期</label>
+                                                <input type="date" class="form-control" id="retirement_date" name="retirement_date" 
+                                                       value="{{ record_data.get('retirement_date', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="reason" class="form-label">退役原因</label>
+                                        <select class="form-select" id="reason" name="reason">
+                                            <option value="">请选择</option>
+                                            <option value="used_up" {{ 'selected' if record_data.get('reason') == 'used_up' else '' }}>用完</option>
+                                            <option value="expired" {{ 'selected' if record_data.get('reason') == 'expired' else '' }}>过期</option>
+                                            <option value="damaged" {{ 'selected' if record_data.get('reason') == 'damaged' else '' }}>损坏</option>
+                                            <option value="quality_issue" {{ 'selected' if record_data.get('reason') == 'quality_issue' else '' }}>质量问题</option>
+                                        </select>
+                                    </div>
+
+                                {% elif record_type == 'maintenance' %}
+                                    <!-- 维护记录表单 -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="title" class="form-label">维护标题 *</label>
+                                                <input type="text" class="form-control" id="title" name="title" 
+                                                       value="{{ record_data.get('title', '') }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="maintenance_date" class="form-label">维护日期</label>
+                                                <input type="date" class="form-control" id="maintenance_date" name="maintenance_date" 
+                                                       value="{{ record_data.get('maintenance_date', '') }}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="maintenance_type" class="form-label">维护类型</label>
+                                        <select class="form-select" id="maintenance_type" name="maintenance_type">
+                                            <option value="">请选择</option>
+                                            <option value="cleaning" {{ 'selected' if record_data.get('maintenance_type') == 'cleaning' else '' }}>清洁</option>
+                                            <option value="calibration" {{ 'selected' if record_data.get('maintenance_type') == 'calibration' else '' }}>校准</option>
+                                            <option value="repair" {{ 'selected' if record_data.get('maintenance_type') == 'repair' else '' }}>维修</option>
+                                            <option value="upgrade" {{ 'selected' if record_data.get('maintenance_type') == 'upgrade' else '' }}>升级</option>
+                                        </select>
+                                    </div>
+                                {% endif %}
+
+                                <!-- 通用字段 -->
+                                <div class="mb-3">
+                                    <label for="tags" class="form-label">标签 (逗号分隔)</label>
+                                    <input type="text" class="form-control" id="tags" name="tags" 
+                                           value="{{ record_data.get('tags', [])|join(', ') if record_data.get('tags') else '' }}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">备注</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="4">{{ record_data.get('notes', '') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> 保存
+                            </button>
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                                <i class="bi bi-x"></i> 取消
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

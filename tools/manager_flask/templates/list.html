@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H2D Logbook Local Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <i class="bi bi-printer"></i> H2D Logbook Manager
+                </a>
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('view_records') }}">
+                        <i class="bi bi-eye"></i> 预览
+                    </a>
+                    <button class="btn btn-success btn-sm" onclick="publishToGit()">
+                        <i class="bi bi-cloud-upload"></i> 发布到 Git
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="mb-4">记录管理</h1>
+                    
+                    {% for record_type, type_name in record_types.items() %}
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-folder"></i> {{ type_name }}
+                            </h5>
+                            <a href="{{ url_for('edit_record', record_type=record_type) }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-plus"></i> 新增
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% set records = records_by_type.get(record_type, {}) %}
+                            {% if records %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>标题</th>
+                                                <th>创建时间</th>
+                                                <th>更新时间</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for record_id, record_data in records.items() %}
+                                            <tr>
+                                                <td><code>{{ record_id }}</code></td>
+                                                <td>{{ record_data.get('title', record_data.get('model_name', '未命名')) }}</td>
+                                                <td>{{ record_data.get('created_at', '未知')[:19] if record_data.get('created_at') else '未知' }}</td>
+                                                <td>{{ record_data.get('updated_at', '未知')[:19] if record_data.get('updated_at') else '未知' }}</td>
+                                                <td>
+                                                    <a href="{{ url_for('edit_record', record_type=record_type, record_id=record_id) }}" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i> 编辑
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-danger" 
+                                                            onclick="deleteRecord('{{ record_type }}', '{{ record_id }}')">
+                                                        <i class="bi bi-trash"></i> 删除
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">暂无记录</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    确定要删除这条记录吗？此操作不可撤销。
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <form id="deleteForm" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">删除</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Publish Modal -->
+    <div class="modal fade" id="publishModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">发布到 Git</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="publishOutput">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">发布中...</span>
+                            </div>
+                            <p class="mt-2">正在发布到 Git...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function deleteRecord(recordType, recordId) {
+            const form = document.getElementById('deleteForm');
+            form.action = `/delete/${recordType}/${recordId}`;
+            new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+
+        function publishToGit() {
+            const modal = new bootstrap.Modal(document.getElementById('publishModal'));
+            modal.show();
+            
+            fetch('/publish', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const output = document.getElementById('publishOutput');
+                if (data.success) {
+                    output.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> 发布成功！
+                        </div>
+                        <pre class="bg-light p-3 rounded">${data.output || ''}</pre>
+                    `;
+                } else {
+                    output.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle"></i> 发布失败
+                        </div>
+                        <pre class="bg-light p-3 rounded">${data.error || ''}</pre>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('publishOutput').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> 网络错误: ${error.message}
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

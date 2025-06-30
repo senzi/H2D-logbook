@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "打印计划",
+  "description": "3D 打印计划的数据结构",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "计划标题",
+      "description": "打印计划的标题",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "model_name": {
+      "type": "string",
+      "title": "模型名称",
+      "description": "计划打印的模型名称",
+      "maxLength": 200
+    },
+    "model_url": {
+      "type": "string",
+      "title": "模型链接",
+      "description": "模型文件的下载链接",
+      "format": "uri"
+    },
+    "priority": {
+      "type": "string",
+      "title": "优先级",
+      "description": "计划的优先级",
+      "enum": ["low", "medium", "high"]
+    },
+    "estimated_time": {
+      "type": "string",
+      "title": "预计时长",
+      "description": "预计打印时长",
+      "maxLength": 100
+    },
+    "tags": {
+      "type": "array",
+      "title": "标签",
+      "description": "计划标签",
+      "items": {
+        "type": "string",
+        "maxLength": 50
+      },
+      "uniqueItems": true
+    },
+    "notes": {
+      "type": "string",
+      "title": "备注",
+      "description": "额外的备注信息",
+      "maxLength": 2000
+    },
+    "created_at": {
+      "type": "string",
+      "title": "创建时间",
+      "description": "计划创建时间",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "title": "更新时间",
+      "description": "计划最后更新时间",
+      "format": "date-time"
+    }
+  },
+  "required": ["title"],
+  "additionalProperties": false
+}
